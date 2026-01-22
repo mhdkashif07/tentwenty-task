@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from "react";
 import { useTimesheets } from "@/hooks/useTimesheets";
 import TimesheetTable from "@/components/TimesheetTable";
-import TimesheetModal from "@/components/TimesheetModal";
 import { Timesheet } from "@/types/Timesheet";
 
 export default function DashboardPage() {
@@ -13,6 +12,12 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [formData, setFormData] = useState({
+    weekNumber: 1,
+    date: new Date().toISOString(),
+    hours: 8,
+    status: "pending" as Timesheet["status"],
+  });
 
   const filtered = useMemo(() => {
     return statusFilter === "all"
@@ -23,13 +28,35 @@ export default function DashboardPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  async function handleSave(payload: Omit<Timesheet, "id">) {
+  async function handleSave() {
     if (editing) {
-      await update(editing.id, payload);
+      await update(editing.id, formData);
       setEditing(null);
     } else {
-      await create(payload);
+      await create(formData);
     }
+    setOpen(false);
+  }
+
+  function handleOpenModal(timesheet?: Timesheet) {
+    if (timesheet) {
+      setEditing(timesheet);
+      setFormData({
+        weekNumber: timesheet.weekNumber,
+        date: timesheet.date,
+        hours: timesheet.hours,
+        status: timesheet.status,
+      });
+    } else {
+      setEditing(null);
+      setFormData({
+        weekNumber: 1,
+        date: new Date().toISOString(),
+        hours: 8,
+        status: "pending",
+      });
+    }
+    setOpen(true);
   }
 
   return (
@@ -40,10 +67,7 @@ export default function DashboardPage() {
           <div>
             <button
               className="text-sm text-gray-600"
-              onClick={() => {
-                setOpen(true);
-                setEditing(null);
-              }}
+              onClick={() => handleOpenModal()}
             >
               Create
             </button>
@@ -76,10 +100,7 @@ export default function DashboardPage() {
           <>
             <TimesheetTable
               items={paged}
-              onEdit={(t) => {
-                setEditing(t);
-                setOpen(true);
-              }}
+              onEdit={(t) => handleOpenModal(t)}
               onDelete={(id) => remove(id)}
               onView={() => {
                 /* view handler placeholder */
@@ -135,15 +156,121 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <TimesheetModal
-        open={open}
-        onClose={() => {
-          setOpen(false);
-          setEditing(null);
-        }}
-        onSave={async (p) => handleSave(p)}
-        initial={editing}
-      />
+      {open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">
+                {editing ? "Edit Timesheet" : "Add Timesheet"}
+              </h2>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  setEditing(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSave();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">Week #</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-md px-3 py-2"
+                  value={formData.weekNumber}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      weekNumber: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <input
+                  type="date"
+                  className="w-full border rounded-md px-3 py-2"
+                  value={formData.date.slice(0, 10)}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      date: new Date(e.target.value).toISOString(),
+                    })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Hours</label>
+                <input
+                  type="number"
+                  className="w-full border rounded-md px-3 py-2"
+                  value={formData.hours}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hours: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2"
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as Timesheet["status"],
+                    })
+                  }
+                >
+                  <option value="pending">Pending</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+                >
+                  {editing ? "Update" : "Create"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setEditing(null);
+                  }}
+                  className="px-6 py-2 text-gray-700 hover:bg-gray-50 rounded-md border"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import TimesheetModal from "@/components/TimesheetModal";
 
 interface Task {
   id: string;
   name: string;
   hours: number;
   projectName: string;
+  workType?: string;
+  description?: string;
 }
 
 interface DayEntry {
@@ -16,6 +19,8 @@ interface DayEntry {
 }
 
 export default function Timesheet() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [timesheet, setTimesheet] = useState<DayEntry[]>([
     {
       date: "Jan 21",
@@ -96,15 +101,31 @@ export default function Timesheet() {
   const percentage = Math.round((totalHours / weeklyTarget) * 100);
 
   const handleAddTask = (dayIndex: number) => {
+    setSelectedDayIndex(dayIndex);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveTask = (data: {
+    projectName: string;
+    workType: string;
+    description: string;
+    hours: number;
+  }) => {
+    if (selectedDayIndex === null) return;
+
     const newTask: Task = {
       id: `task-${crypto.randomUUID()}`,
-      name: "New Task",
-      hours: 1,
-      projectName: "Project Name",
+      name: data.description || data.workType,
+      hours: data.hours,
+      projectName: data.projectName,
+      workType: data.workType,
+      description: data.description,
     };
     const updatedTimesheet = [...timesheet];
-    updatedTimesheet[dayIndex].tasks.push(newTask);
+    updatedTimesheet[selectedDayIndex].tasks.push(newTask);
     setTimesheet(updatedTimesheet);
+    setIsModalOpen(false);
+    setSelectedDayIndex(null);
   };
 
   const handleDeleteTask = (dayIndex: number, taskId: string) => {
@@ -242,6 +263,16 @@ export default function Timesheet() {
           </div>
         ))}
       </div>
+
+      {/* Modal */}
+      <TimesheetModal
+        open={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedDayIndex(null);
+        }}
+        onSave={handleSaveTask}
+      />
     </div>
   );
 }

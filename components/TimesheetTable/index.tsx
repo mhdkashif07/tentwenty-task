@@ -60,7 +60,7 @@ export default function TimesheetTable({
           </tr>
         </thead>
         <tbody className="text-sm text-gray-700">
-          {items.map((t, idx) => (
+          {items.map((t) => (
             <tr key={t.id} className="border-b border-[#E5E7EB]">
               <td className="px-4 py-4">{t.weekNumber}</td>
               <td className="px-4 py-4 text-gray-600">
